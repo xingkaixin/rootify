@@ -468,6 +468,37 @@ function App() {
     }
   };
 
+  const handleExportTSV = async () => {
+    if (tableData.length === 0) {
+      alert('没有数据可导出');
+      return;
+    }
+
+    // 创建TSV内容：中文\t英文\n
+    const tsvContent = tableData.map(row => `${row.chinese}\t${row.english}`).join('\n');
+    const fullContent = `中文\t英文\n${tsvContent}`;
+
+    try {
+      // 使用现代的Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(fullContent);
+        alert('已复制到剪贴板，可直接粘贴到Excel中');
+      } else {
+        // 降级方案：使用document.execCommand
+        const textArea = document.createElement('textarea');
+        textArea.value = fullContent;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('已复制到剪贴板，可直接粘贴到Excel中');
+      }
+    } catch (error) {
+      console.error('复制失败:', error);
+      alert('复制失败，请手动复制数据');
+    }
+  };
+
   const handleNewChineseChange = (value: string) => {
     setManualTranslations(prev => ({ ...prev, newChinese: value }));
   };
@@ -555,9 +586,17 @@ function App() {
 
               {tableData.length > 0 && (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-200">
-                    <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">中文字段名</div>
-                    <div className="px-4 py-3 font-medium text-gray-900">英文字段名</div>
+                  <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <div className="flex">
+                      <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">中文字段名</div>
+                      <div className="px-4 py-3 font-medium text-gray-900">英文字段名</div>
+                    </div>
+                    <button
+                      onClick={handleExportTSV}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                    >
+                      导出到剪贴板
+                    </button>
                   </div>
 
                   {tableData.map((row, index) => (
