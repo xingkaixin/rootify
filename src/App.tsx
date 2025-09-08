@@ -105,9 +105,68 @@ function segmentText(text: string): SegmentationResult[] {
 
 function RootManagement() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importPreview, setImportPreview] = useState<Array<{chinese: string, english: string, action: 'add' | 'update'}>>([]);
 
   const allRoots = getAllRoots();
   const customRoots = loadCustomRoots();
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csvContent = e.target?.result as string;
+      parseCSVAndPreview(csvContent);
+    };
+    reader.readAsText(file);
+  };
+
+  const parseCSVAndPreview = (csvContent: string) => {
+    const lines = csvContent.trim().split('\n');
+    if (lines.length < 2) return;
+
+    const headers = lines[0].split(',').map(h => h.trim());
+    const chineseIndex = headers.findIndex(h => h === '中文全称' || h === '中文');
+    const englishIndex = headers.findIndex(h => h === '英文缩写' || h === '英文');
+
+    if (chineseIndex === -1 || englishIndex === -1) {
+      alert('CSV格式错误：需要包含"中文全称"和"英文缩写"列');
+      return;
+    }
+
+    const preview: Array<{chinese: string, english: string, action: 'add' | 'update'}> = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const columns = lines[i].split(',').map(col => col.trim());
+      const chinese = columns[chineseIndex];
+      const english = columns[englishIndex];
+      
+      if (chinese && english) {
+        const action = allRoots[chinese] ? 'update' : 'add';
+        preview.push({ chinese, english, action });
+      }
+    }
+
+    setImportPreview(preview);
+    setShowImportDialog(true);
+  };
+
+  const confirmImport = () => {
+    const customRoots = loadCustomRoots();
+    
+    importPreview.forEach(({ chinese, english }) => {
+      customRoots[chinese] = english;
+    });
+    
+    saveCustomRoots(customRoots);
+    setShowImportDialog(false);
+    setImportPreview([]);
+    
+    // 刷新显示
+    window.location.reload();
+  };
 
   const filteredRoots = Object.entries(allRoots).filter(
     ([chinese, english]) =>
@@ -117,14 +176,74 @@ function RootManagement() {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="搜索词根..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
+        <div className="flex gap-4">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="搜索词根..."
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <label className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer font-medium">
+            📁 批量导入
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
       </div>
+
+      {/* 导入预览对话框 */}
+      {showImportDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 导入预览</h3>
+            <p className="text-sm text-gray-600 mb-4">发现 {importPreview.length} 个词根：</p>
+            
+            <div className="flex-1 overflow-y-auto border border-gray-200 rounded-lg mb-4">
+              <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200">
+                <div className="px-3 py-1.5 font-medium text-gray-900 border-r border-gray-200 text-sm">中文</div>
+                <div className="px-3 py-1.5 font-medium text-gray-900 border-r border-gray-200 text-sm">英文</div>
+                <div className="px-3 py-1.5 font-medium text-gray-900 text-sm">操作</div>
+              </div>
+              
+              {importPreview.map(({ chinese, english, action }, index) => (
+                <div key={index} className="grid grid-cols-3 border-b border-gray-100 last:border-b-0">
+                  <div className="px-3 py-1 border-r border-gray-200 font-medium text-sm">{chinese}</div>
+                  <div className="px-3 py-1 border-r border-gray-200 font-mono text-blue-600 text-sm">{english}</div>
+                  <div className="px-3 py-1">
+                    <span className={`px-2 py-0.5 text-xs rounded ${
+                      action === 'add' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {action === 'add' ? '新增' : '更新'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setShowImportDialog(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmImport}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                确认导入
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-200">
