@@ -461,16 +461,7 @@ function App() {
   const [manualTranslations, setManualTranslations] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch('/package.json')
-      .then(response => response.json())
-      .then(data => {
-        if (data.version) {
-          setVersion(data.version);
-        }
-      })
-      .catch(() => {
-        console.log('无法获取版本号，使用默认值');
-      });
+    setVersion(import.meta.env.VITE_APP_VERSION || '1.0.0');
   }, []);
 
   const handleUnifiedInput = (value: string) => {
