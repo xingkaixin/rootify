@@ -150,6 +150,37 @@ function RootManagement() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (filteredRoots.length === 0) {
+      alert('没有词根数据可导出');
+      return;
+    }
+
+    // 创建CSV内容
+    const csvContent = filteredRoots.map(([chinese, english]) => 
+      `"${chinese}","${english}"`
+    ).join('\n');
+    
+    const fullContent = `中文词根,英文对应\n${csvContent}`;
+    
+    // 创建Blob对象
+    const blob = new Blob([fullContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // 创建下载链接
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `词根库_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    URL.revokeObjectURL(url);
+  };
+
   const confirmClearAll = () => {
     localStorage.removeItem('customWordRoots');
     setShowClearConfirm(false);
@@ -192,6 +223,12 @@ function RootManagement() {
             className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
           >
             清空所有
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            导出CSV
           </button>
           <label className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer font-medium">
             批量导入
