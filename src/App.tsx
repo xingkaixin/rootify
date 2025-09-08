@@ -77,173 +77,6 @@ function segmentText(text: string): SegmentationResult[] {
   return results;
 }
 
-function BatchTranslationTable() {
-  const [tableData, setTableData] = useState<
-    Array<{ chinese: string; english: string }>
-  >([
-    { chinese: "", english: "" },
-    { chinese: "", english: "" },
-    { chinese: "", english: "" },
-    { chinese: "", english: "" },
-    { chinese: "", english: "" },
-  ]);
-  const [copied, setCopied] = useState<number | null>(null);
-  const [batchInput, setBatchInput] = useState("");
-
-  const handleInputChange = (index: number, value: string) => {
-    const newData = [...tableData];
-    newData[index].chinese = value;
-    newData[index].english = "";
-    setTableData(newData);
-  };
-
-  const handleBatchInput = () => {
-    const lines = batchInput
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-    
-    if (lines.length > 0) {
-      const newData = lines.map(line => ({ chinese: line, english: "" }));
-      setTableData(newData);
-      setBatchInput("");
-    }
-  };
-
-  const handleBatchTranslate = () => {
-    const newData = tableData.map((row) => {
-      if (row.chinese.trim()) {
-        const segments = segmentText(row.chinese);
-        const englishResult = segments.map((seg) => seg.english).join("_");
-        return { ...row, english: englishResult };
-      }
-      return row;
-    });
-    setTableData(newData);
-  };
-
-  const handleReset = () => {
-    setTableData([
-      { chinese: "", english: "" },
-      { chinese: "", english: "" },
-      { chinese: "", english: "" },
-      { chinese: "", english: "" },
-      { chinese: "", english: "" },
-    ]);
-  };
-
-  const addRow = () => {
-    setTableData([...tableData, { chinese: "", english: "" }]);
-  };
-
-  const copyToClipboard = async (text: string, index: number) => {
-    if (text) {
-      await navigator.clipboard.writeText(text);
-      setCopied(index);
-      setTimeout(() => setCopied(null), 2000);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* 批量输入区域 */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">批量输入（支持粘贴多行）</h3>
-        <div className="space-y-4">
-          <textarea
-            value={batchInput}
-            onChange={(e) => setBatchInput(e.target.value)}
-            placeholder="一次粘贴多行中文，每行一个字段名：
-交易日期
-时间戳
-信息来源
-存款金额
-取款金额"
-            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-          />
-          <div className="flex gap-4">
-            <button
-              onClick={handleBatchInput}
-              disabled={!batchInput.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
-            >
-              添加到表格
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-4">
-        <button
-          onClick={handleBatchTranslate}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-        >
-          批量翻译
-        </button>
-        <button
-          onClick={handleReset}
-          className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
-        >
-          重置
-        </button>
-        <button
-          onClick={addRow}
-          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
-        >
-          添加行
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-200">
-          <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">
-            中文字段名
-          </div>
-          <div className="px-4 py-3 font-medium text-gray-900">英文字段名</div>
-        </div>
-
-        {tableData.map((row, index) => (
-          <div
-            key={index}
-            className="grid grid-cols-2 border-b border-gray-100 last:border-b-0"
-          >
-            <div className="border-r border-gray-200">
-              <input
-                type="text"
-                value={row.chinese}
-                onChange={(e) => handleInputChange(index, e.target.value)}
-                placeholder="输入中文字段名"
-                className="w-full px-4 py-3 border-0 focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-              />
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                value={row.english}
-                readOnly
-                placeholder="英文翻译结果"
-                className="w-full px-4 py-3 pr-12 border-0 bg-gray-50 text-gray-700"
-              />
-              {row.english && (
-                <button
-                  onClick={() => copyToClipboard(row.english, index)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-200 rounded transition-colors"
-                  title="复制"
-                >
-                  {copied === index ? (
-                    <Check className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-gray-500" />
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function RootManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -299,38 +132,62 @@ function App() {
   const [activeTab, setActiveTab] = useState<"translation" | "management">(
     "translation"
   );
-  const [inputText, setInputText] = useState("");
-  const [segmentationResults, setSegmentationResults] = useState<
-    SegmentationResult[]
+  const [unifiedInput, setUnifiedInput] = useState("");
+  const [tableData, setTableData] = useState<
+    Array<{ chinese: string; english: string }>
   >([]);
-  const [outputText, setOutputText] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = (e.target as HTMLInputElement).value;
-    setInputText(value);
-
+  const handleUnifiedInput = (value: string) => {
+    setUnifiedInput(value);
+    
     if (value.trim()) {
-      const results = segmentText(value);
-      setSegmentationResults(results);
-
-      const englishOutput = results.map((r) => r.english).join("_");
-      setOutputText(englishOutput);
+      const lines = value.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      const newData = lines.map(line => ({ chinese: line, english: "" }));
+      setTableData(newData);
     } else {
-      setSegmentationResults([]);
-      setOutputText("");
+      setTableData([]);
     }
   };
 
-  const copyToClipboard = async () => {
-    if (outputText) {
-      try {
-        await navigator.clipboard.writeText(outputText);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (error) {
-        console.error("复制失败:", error);
+  const handleTableEdit = (index: number, chinese: string) => {
+    const newData = [...tableData];
+    newData[index].chinese = chinese;
+    newData[index].english = "";
+    setTableData(newData);
+  };
+
+  const addRow = () => {
+    setTableData([...tableData, { chinese: "", english: "" }]);
+  };
+
+  const deleteRow = (index: number) => {
+    const newData = tableData.filter((_, i) => i !== index);
+    setTableData(newData);
+  };
+
+  const handleBatchTranslate = () => {
+    const translatedData = tableData.map((row) => {
+      if (row.chinese.trim()) {
+        const segments = segmentText(row.chinese);
+        const englishResult = segments.map((seg) => seg.english).join("_");
+        return { ...row, english: englishResult };
       }
+      return row;
+    });
+    setTableData(translatedData);
+  };
+
+  const handleReset = () => {
+    setUnifiedInput("");
+    setTableData([]);
+  };
+
+  const copyToClipboard = async (text: string, index: number) => {
+    if (text) {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
     }
   };
 
@@ -370,91 +227,94 @@ function App() {
 
         <main className="flex-1 p-6 overflow-auto">
           {activeTab === "translation" && (
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">
-                批量词根翻译
-              </h2>
-              <BatchTranslationTable />
-
-              {/* 单行翻译器（保留原有功能） */}
-              <div className="mt-12 bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  单行快速翻译
-                </h3>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      输入中文字段名
-                    </label>
-                    <input
-                      type="text"
-                      value={inputText}
-                      onChange={handleInputChange}
-                      placeholder="交易日期信息来源调整标志"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        分词结果
-                      </label>
-                      <div className="bg-gray-50 rounded-lg p-4 min-h-[100px] border border-gray-200">
-                        {segmentationResults.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {segmentationResults.map((result, index) => (
-                              <div
-                                key={index}
-                                className="bg-white rounded-md p-2 border border-gray-200"
-                              >
-                                <div className="text-blue-600 font-medium text-sm">
-                                  {result.chinese}
-                                </div>
-                                <div className="text-gray-500 text-xs font-mono">
-                                  {result.english}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                            等待输入...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      生成的英文字段名
-                    </label>
-                    <div className="bg-blue-50 rounded-lg p-4 min-h-[100px] border border-blue-200">
-                      <div className="flex items-center justify-between h-full">
-                        <div className="text-xl font-mono text-blue-700">
-                          {outputText || "awaiting_input..."}
-                        </div>
-                        {outputText && (
-                          <button
-                            onClick={copyToClipboard}
-                            className={`p-2 rounded-md border transition-colors ${
-                              copied
-                                ? "bg-green-100 border-green-300 text-green-700"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
-                            title="复制到剪贴板"
-                          >
-                            {copied ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">词根翻译</h2>
+              
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  输入中文字段名（支持单行或多行）
+                </label>
+                <textarea
+                  value={unifiedInput}
+                  onChange={(e) => handleUnifiedInput(e.target.value)}
+                  placeholder="输入中文字段名，每行一个：
+交易日期
+时间戳
+信息来源
+存款金额
+取款金额"
+                  className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                />
+                <div className="flex gap-4 mt-4">
+                  <button
+                    onClick={handleBatchTranslate}
+                    disabled={tableData.length === 0}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    翻译
+                  </button>
+                  <button
+                    onClick={addRow}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    添加行
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    清空
+                  </button>
                 </div>
               </div>
+
+              {tableData.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-200">
+                    <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">中文字段名</div>
+                    <div className="px-4 py-3 font-medium text-gray-900">英文字段名</div>
+                  </div>
+
+                  {tableData.map((row, index) => (
+                    <div key={index} className="grid grid-cols-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 group">
+                      <div className="border-r border-gray-200 relative">
+                        <input
+                          type="text"
+                          value={row.chinese}
+                          onChange={(e) => handleTableEdit(index, e.target.value)}
+                          className="w-full px-4 py-3 border-0 bg-transparent focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                          placeholder="输入中文"
+                        />
+                      </div>
+                      <div className="relative flex items-center">
+                        <div className="px-4 py-3 pr-20 text-blue-600 font-mono flex-1">{row.english || "..."}</div>
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {row.english && (
+                            <button
+                              onClick={() => copyToClipboard(row.english, index)}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="复制"
+                            >
+                              {copiedIndex === index ? (
+                                <Check className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-gray-500" />
+                              )}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => deleteRow(index)}
+                            className="p-1 hover:bg-red-100 rounded transition-colors text-red-500 font-bold"
+                            title="删除"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
