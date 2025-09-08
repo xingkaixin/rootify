@@ -248,6 +248,41 @@ function App() {
     setManualTranslations(prev => ({ ...prev, [chinese]: english }));
   };
 
+  const handleAddCustomRoot = (chinese: string, english: string) => {
+    if (chinese.trim() && english.trim()) {
+      const customRoots = loadCustomRoots();
+      const updatedCustomRoots = { ...customRoots, [chinese.trim()]: english.trim() };
+      saveCustomRoots(updatedCustomRoots);
+      
+      // 重新翻译所有文本
+      const retranslatedData = tableData.map((row) => {
+        if (row.chinese.trim()) {
+          const segments = segmentText(row.chinese);
+          const englishResult = segments.map((seg) => seg.english).join("_");
+          const unknownRoots = segments.filter(seg => seg.isUnknown).map(seg => seg.chinese);
+          
+          return { 
+            ...row, 
+            english: englishResult,
+            hasUnknownRoots: unknownRoots.length > 0,
+            segments: segments
+          };
+        }
+        return row;
+      });
+      
+      setTableData(retranslatedData);
+    }
+  };
+
+  const handleNewChineseChange = (value: string) => {
+    setManualTranslations(prev => ({ ...prev, newChinese: value }));
+  };
+
+  const handleNewEnglishChange = (value: string) => {
+    setManualTranslations(prev => ({ ...prev, newEnglish: value }));
+  };
+
   const saveManualTranslations = () => {
     const customRoots = loadCustomRoots();
     const updatedCustomRoots = { ...customRoots, ...manualTranslations };
@@ -331,7 +366,7 @@ function App() {
                 </label>
                 <textarea
                   value={unifiedInput}
-                  onChange={(e) => handleUnifiedInput(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleUnifiedInput(e.target.value)}
                   placeholder="输入中文字段名，每行一个：
 交易日期
 时间戳
@@ -414,42 +449,81 @@ function App() {
                 </div>
               )}
 
-              {showManualPanel && (
-                <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">🔧 手动翻译未知词根</h3>
-                  <p className="text-sm text-gray-600 mb-4">以下字符无法自动翻译，请提供英文对应：</p>
+              <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">➕ 添加自定义词根</h3>
+                <p className="text-sm text-gray-600 mb-4">用户判断：什么是一个完整的词根？输入中文词语和对应的英文翻译：</p>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">中文词语</label>
+                    <input
+                      type="text"
+                      value={manualTranslations.newChinese || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNewChineseChange(e.target.value)}
+                      placeholder="例如：证券、区块链、人工智能"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">英文翻译</label>
+                    <input
+                      type="text"
+                      value={manualTranslations.newEnglish || ""}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleNewEnglishChange(e.target.value)}
+                      placeholder="例如：securities、blockchain、ai"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => {
+                      handleAddCustomRoot(manualTranslations.newChinese || "", manualTranslations.newEnglish || "");
+                      setManualTranslations(prev => ({ ...prev, newChinese: "", newEnglish: "" }));
+                    }}
+                    disabled={!manualTranslations.newChinese?.trim() || !manualTranslations.newEnglish?.trim()}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                  >
+                    添加词根
+                  </button>
+                  <button
+                    onClick={() => setManualTranslations(prev => ({ ...prev, newChinese: "", newEnglish: "" }))}
+                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    清空
+                  </button>
+                </div>
+              </div>
+
+              {showManualPanel && currentUnknownRoots.length > 0 && (
+                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6 mt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">⚠️ 发现未识别字符</h3>
+                  <p className="text-sm text-gray-600 mb-4">以下字符系统无法识别，您可以选择：</p>
                   
-                  <div className="space-y-4 mb-6">
+                  <div className="space-y-2 mb-4">
                     {currentUnknownRoots.map((root) => (
-                      <div key={root} className="flex items-center gap-4">
-                        <div className="w-20 text-right font-medium text-gray-900">{root}</div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            value={manualTranslations[root] || ""}
-                            onChange={(e) => handleManualTranslation(root, e.target.value)}
-                            placeholder="输入英文翻译..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
+                      <div key={root} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <span className="font-medium">{root}</span>
+                        <button
+                          onClick={() => {
+                            setManualTranslations(prev => ({ ...prev, newChinese: root }));
+                            setShowManualPanel(false);
+                          }}
+                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                        >
+                          添加为词根
+                        </button>
                       </div>
                     ))}
                   </div>
                   
-                  <div className="flex gap-4">
-                    <button
-                      onClick={saveManualTranslations}
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      保存翻译
-                    </button>
-                    <button
-                      onClick={() => setShowManualPanel(false)}
-                      className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
-                    >
-                      取消
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setShowManualPanel(false)}
+                    className="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
+                  >
+                    忽略
+                  </button>
                 </div>
               )}
             </div>
