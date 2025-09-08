@@ -88,12 +88,26 @@ function BatchTranslationTable() {
     { chinese: "", english: "" },
   ]);
   const [copied, setCopied] = useState<number | null>(null);
+  const [batchInput, setBatchInput] = useState("");
 
   const handleInputChange = (index: number, value: string) => {
     const newData = [...tableData];
     newData[index].chinese = value;
     newData[index].english = "";
     setTableData(newData);
+  };
+
+  const handleBatchInput = () => {
+    const lines = batchInput
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    
+    if (lines.length > 0) {
+      const newData = lines.map(line => ({ chinese: line, english: "" }));
+      setTableData(newData);
+      setBatchInput("");
+    }
   };
 
   const handleBatchTranslate = () => {
@@ -132,7 +146,34 @@ function BatchTranslationTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-4 mb-6">
+      {/* 批量输入区域 */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">批量输入（支持粘贴多行）</h3>
+        <div className="space-y-4">
+          <textarea
+            value={batchInput}
+            onChange={(e) => setBatchInput(e.target.value)}
+            placeholder="一次粘贴多行中文，每行一个字段名：
+交易日期
+时间戳
+信息来源
+存款金额
+取款金额"
+            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+          />
+          <div className="flex gap-4">
+            <button
+              onClick={handleBatchInput}
+              disabled={!batchInput.trim()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              添加到表格
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-4">
         <button
           onClick={handleBatchTranslate}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
