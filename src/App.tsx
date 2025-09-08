@@ -69,7 +69,9 @@ function segmentText(text: string): SegmentationResult[] {
 function RootManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [importPreview, setImportPreview] = useState<Array<{chinese: string, english: string, action: 'add' | 'update'}>>([]);
+  const [editingRoot, setEditingRoot] = useState<{chinese: string, english: string} | null>(null);
 
   const allRoots = getAllRoots();
 
@@ -115,6 +117,45 @@ function RootManagement() {
     setShowImportDialog(true);
   };
 
+  const handleClearAll = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handleEditRoot = (chinese: string, english: string) => {
+    setEditingRoot({ chinese, english });
+  };
+
+  const handleSaveEdit = (newChinese: string, newEnglish: string) => {
+    if (newChinese.trim() && newEnglish.trim()) {
+      const customRoots = loadCustomRoots();
+      
+      // 如果中文修改了，先删除旧的
+      if (editingRoot && editingRoot.chinese !== newChinese) {
+        delete customRoots[editingRoot.chinese];
+      }
+      
+      customRoots[newChinese.trim()] = newEnglish.trim();
+      saveCustomRoots(customRoots);
+      setEditingRoot(null);
+      window.location.reload();
+    }
+  };
+
+  const handleDeleteRoot = (chinese: string) => {
+    if (confirm(`确定要删除词根 "${chinese}" 吗？`)) {
+      const customRoots = loadCustomRoots();
+      delete customRoots[chinese];
+      saveCustomRoots(customRoots);
+      window.location.reload();
+    }
+  };
+
+  const confirmClearAll = () => {
+    localStorage.removeItem('customWordRoots');
+    setShowClearConfirm(false);
+    window.location.reload();
+  };
+
   const confirmImport = () => {
     const customRoots = loadCustomRoots();
     
@@ -146,8 +187,14 @@ function RootManagement() {
             placeholder="搜索词根..."
             className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
+          <button
+            onClick={handleClearAll}
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+          >
+            清空所有
+          </button>
           <label className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer font-medium">
-            📁 批量导入
+            批量导入
             <input
               type="file"
               accept=".csv"
@@ -157,6 +204,79 @@ function RootManagement() {
           </label>
         </div>
       </div>
+
+      {/* 编辑对话框 */}
+      {editingRoot && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">✏️ 编辑词根</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">中文词根</label>
+                <input
+                  type="text"
+                  defaultValue={editingRoot.chinese}
+                  id="edit-chinese"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">英文对应</label>
+                <input
+                  type="text"
+                  defaultValue={editingRoot.english}
+                  id="edit-english"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setEditingRoot(null)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  const chineseInput = document.getElementById('edit-chinese') as HTMLInputElement;
+                  const englishInput = document.getElementById('edit-english') as HTMLInputElement;
+                  handleSaveEdit(chineseInput.value, englishInput.value);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 清空确认对话框 */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">⚠️ 确认清空</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              确定要清空所有词根吗？此操作不可恢复。
+            </p>
+            <div className="flex gap-4 justify-end">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmClearAll}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                确认清空
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 导入预览对话框 */}
       {showImportDialog && (
@@ -208,11 +328,14 @@ function RootManagement() {
       )}
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200">
           <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">
             中文词根
           </div>
-          <div className="px-4 py-3 font-medium text-gray-900">英文对应</div>
+          <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">英文对应</div>
+          <div className="px-4 py-3 font-medium text-gray-900">
+            操作
+          </div>
         </div>
 
         <div className="max-h-96 overflow-y-auto">
@@ -220,12 +343,26 @@ function RootManagement() {
             return (
               <div
                 key={chinese}
-                className="grid grid-cols-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+                className="grid grid-cols-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 items-center"
               >
                 <div className="px-4 py-3 border-r border-gray-200 font-medium text-gray-800">
                   {chinese}
                 </div>
-                <div className="px-4 py-3 font-mono text-blue-600">{english}</div>
+                <div className="px-4 py-3 border-r border-gray-200 font-mono text-blue-600">{english}</div>
+                <div className="px-4 py-3 flex gap-2">
+                  <button
+                    onClick={() => handleEditRoot(chinese, english)}
+                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRoot(chinese)}
+                    className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             );
           })}
