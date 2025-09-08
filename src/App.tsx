@@ -166,12 +166,10 @@ function App() {
   );
   const [unifiedInput, setUnifiedInput] = useState("");
   const [tableData, setTableData] = useState<
-    Array<{ chinese: string; english: string; hasUnknownRoots?: boolean; segments?: SegmentationResult[] }>
+    Array<{ chinese: string; english: string }>
   >([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [manualTranslations, setManualTranslations] = useState<Record<string, string>>({});
-  const [showManualPanel, setShowManualPanel] = useState(false);
-  const [currentUnknownRoots, setCurrentUnknownRoots] = useState<string[]>([]);
 
   const handleUnifiedInput = (value: string) => {
     setUnifiedInput(value);
@@ -205,30 +203,16 @@ function App() {
     const translatedData = tableData.map((row) => {
       if (row.chinese.trim()) {
         const segments = segmentText(row.chinese);
-        const unknownRoots = segments.filter(seg => seg.isUnknown).map(seg => seg.chinese);
         const englishResult = segments.map((seg) => seg.english).join("_");
         
         return { 
           ...row, 
-          english: englishResult,
-          hasUnknownRoots: unknownRoots.length > 0,
-          segments: segments
+          english: englishResult
         };
       }
       return row;
     });
     setTableData(translatedData);
-    
-    // 收集所有未知词根
-    const allUnknownRoots = translatedData
-      .filter(row => row.hasUnknownRoots)
-      .flatMap(row => row.segments?.filter(seg => seg.isUnknown).map(seg => seg.chinese) || []);
-    
-    const uniqueUnknownRoots = [...new Set(allUnknownRoots)];
-    if (uniqueUnknownRoots.length > 0) {
-      setCurrentUnknownRoots(uniqueUnknownRoots);
-      setShowManualPanel(true);
-    }
   };
 
   const handleReset = () => {
@@ -244,10 +228,6 @@ function App() {
     }
   };
 
-  const handleManualTranslation = (chinese: string, english: string) => {
-    setManualTranslations(prev => ({ ...prev, [chinese]: english }));
-  };
-
   const handleAddCustomRoot = (chinese: string, english: string) => {
     if (chinese.trim() && english.trim()) {
       const customRoots = loadCustomRoots();
@@ -259,13 +239,10 @@ function App() {
         if (row.chinese.trim()) {
           const segments = segmentText(row.chinese);
           const englishResult = segments.map((seg) => seg.english).join("_");
-          const unknownRoots = segments.filter(seg => seg.isUnknown).map(seg => seg.chinese);
           
           return { 
             ...row, 
-            english: englishResult,
-            hasUnknownRoots: unknownRoots.length > 0,
-            segments: segments
+            english: englishResult
           };
         }
         return row;
@@ -281,44 +258,6 @@ function App() {
 
   const handleNewEnglishChange = (value: string) => {
     setManualTranslations(prev => ({ ...prev, newEnglish: value }));
-  };
-
-  const saveManualTranslations = () => {
-    const customRoots = loadCustomRoots();
-    const updatedCustomRoots = { ...customRoots, ...manualTranslations };
-    saveCustomRoots(updatedCustomRoots);
-    
-    // 重新翻译所有文本
-    const retranslatedData = tableData.map((row) => {
-      if (row.chinese.trim()) {
-        const segments = segmentText(row.chinese);
-        const englishResult = segments.map((seg) => seg.english).join("_");
-        const unknownRoots = segments.filter(seg => seg.isUnknown).map(seg => seg.chinese);
-        
-        return { 
-          ...row, 
-          english: englishResult,
-          hasUnknownRoots: unknownRoots.length > 0,
-          segments: segments
-        };
-      }
-      return row;
-    });
-    
-    setTableData(retranslatedData);
-    setShowManualPanel(false);
-    setManualTranslations({});
-    
-    // 检查是否还有未知词根
-    const remainingUnknown = retranslatedData
-      .filter(row => row.hasUnknownRoots)
-      .flatMap(row => row.segments?.filter(seg => seg.isUnknown).map(seg => seg.chinese) || []);
-    
-    if (remainingUnknown.length > 0) {
-      setCurrentUnknownRoots([...new Set(remainingUnknown)]);
-    } else {
-      setCurrentUnknownRoots([]);
-    }
   };
 
   return (
@@ -415,12 +354,9 @@ function App() {
                           className="w-full px-4 py-3 border-0 bg-transparent focus:ring-2 focus:ring-blue-500 focus:ring-inset"
                           placeholder="输入中文"
                         />
-                        {row.hasUnknownRoots && (
-                          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">!</div>
-                        )}
-                      </div>
+                        </div>
                       <div className="relative flex items-center">
-                        <div className={`px-4 py-3 pr-20 font-mono flex-1 ${row.hasUnknownRoots ? 'text-orange-600' : 'text-blue-600'}`}>{row.english || "..."}</div>
+                        <div className="px-4 py-3 pr-20 font-mono flex-1 text-blue-600">{row.english || "..."}</div>
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {row.english && (
                             <button
@@ -496,36 +432,6 @@ function App() {
                 </div>
               </div>
 
-              {showManualPanel && currentUnknownRoots.length > 0 && (
-                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6 mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">⚠️ 发现未识别字符</h3>
-                  <p className="text-sm text-gray-600 mb-4">以下字符系统无法识别，您可以选择：</p>
-                  
-                  <div className="space-y-2 mb-4">
-                    {currentUnknownRoots.map((root) => (
-                      <div key={root} className="flex items-center justify-between p-2 bg-white rounded border">
-                        <span className="font-medium">{root}</span>
-                        <button
-                          onClick={() => {
-                            setManualTranslations(prev => ({ ...prev, newChinese: root }));
-                            setShowManualPanel(false);
-                          }}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                        >
-                          添加为词根
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <button
-                    onClick={() => setShowManualPanel(false)}
-                    className="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
-                  >
-                    忽略
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
