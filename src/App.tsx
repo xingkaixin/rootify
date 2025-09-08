@@ -12,43 +12,7 @@ interface SegmentationResult {
   isUnknown?: boolean;
 }
 
-// 完整的词根映射库（461个词根）
-const ROOT_MAPPING = {
-  交易: "trade",
-  日期: "date",
-  时间: "time",
-  信息: "info",
-  存款: "deposit",
-  取款: "withdrawal",
-  转账: "transfer",
-  汇款: "remittance",
-  外汇: "forex",
-  本币: "domestic",
-  外币: "foreign",
-  兑换: "exchange",
-  汇率: "rate",
-  升值: "appreciation",
-  贬值: "depreciation",
-  通胀: "inflation",
-  通缩: "deflation",
-  央行: "central_bank",
-  货币: "monetary",
-  政策: "policy",
-  利率: "interest_rate",
-  基准: "benchmark",
-  指数: "index",
-  评级: "rating",
-  信用: "credit",
-  评分: "score",
-  等级: "grade",
-  标准: "standard",
-  规范: "specification",
-  分位数: "quantile",
-};
 
-const wordRootLibrary: WordRoot[] = Object.entries(ROOT_MAPPING).map(
-  ([chinese, english]) => ({ chinese, english })
-);
 
 function loadCustomRoots(): Record<string, string> {
   try {
@@ -64,8 +28,7 @@ function saveCustomRoots(customRoots: Record<string, string>) {
 }
 
 function getAllRoots(): Record<string, string> {
-  const customRoots = loadCustomRoots();
-  return { ...ROOT_MAPPING, ...customRoots };
+  return loadCustomRoots();
 }
 
 function segmentText(text: string): SegmentationResult[] {
@@ -109,7 +72,6 @@ function RootManagement() {
   const [importPreview, setImportPreview] = useState<Array<{chinese: string, english: string, action: 'add' | 'update'}>>([]);
 
   const allRoots = getAllRoots();
-  const customRoots = loadCustomRoots();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -255,17 +217,15 @@ function RootManagement() {
 
         <div className="max-h-96 overflow-y-auto">
           {filteredRoots.map(([chinese, english]) => {
-            const isCustom = customRoots[chinese] !== undefined;
             return (
               <div
                 key={chinese}
                 className="grid grid-cols-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
               >
-                <div className={`px-4 py-3 border-r border-gray-200 font-medium ${isCustom ? 'text-green-800' : 'text-gray-800'}`}>
+                <div className="px-4 py-3 border-r border-gray-200 font-medium text-gray-800">
                   {chinese}
-                  {isCustom && <span className="ml-2 text-xs text-green-600">[自定义]</span>}
                 </div>
-                <div className={`px-4 py-3 font-mono ${isCustom ? 'text-green-600' : 'text-blue-600'}`}>{english}</div>
+                <div className="px-4 py-3 font-mono text-blue-600">{english}</div>
               </div>
             );
           })}
