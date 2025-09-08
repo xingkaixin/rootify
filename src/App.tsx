@@ -89,28 +89,27 @@ function RootManagement() {
 
   const parseCSVAndPreview = (csvContent: string) => {
     const lines = csvContent.trim().split('\n');
-    if (lines.length < 2) return;
+    if (lines.length < 2) return; // 至少需要标题行+一行数据
 
-    const headers = lines[0].split(',').map(h => h.trim());
-    const chineseIndex = headers.findIndex(h => h === '中文全称' || h === '中文');
-    const englishIndex = headers.findIndex(h => h === '英文缩写' || h === '英文');
-
-    if (chineseIndex === -1 || englishIndex === -1) {
-      alert('CSV格式错误：需要包含"中文全称"和"英文缩写"列');
-      return;
-    }
-
+    // 跳过第一行标题，从第二行开始处理
     const preview: Array<{chinese: string, english: string, action: 'add' | 'update'}> = [];
     
-    for (let i = 1; i < lines.length; i++) {
-      const columns = lines[i].split(',').map(col => col.trim());
-      const chinese = columns[chineseIndex];
-      const english = columns[englishIndex];
-      
-      if (chinese && english) {
-        const action = allRoots[chinese] ? 'update' : 'add';
-        preview.push({ chinese, english, action });
+    for (let i = 1; i < lines.length; i++) { // 从1开始，跳过标题行
+      const columns = lines[i].split(',').map(col => col.trim().replace(/^"|"$/g, '')); // 去掉双引号
+      if (columns.length >= 2) {
+        const chinese = columns[0];
+        const english = columns[1];
+        
+        if (chinese && english) {
+          const action = allRoots[chinese] ? 'update' : 'add';
+          preview.push({ chinese, english, action });
+        }
       }
+    }
+
+    if (preview.length === 0) {
+      alert('CSV格式错误：需要至少两列数据（中文词根,英文对应）');
+      return;
     }
 
     setImportPreview(preview);
