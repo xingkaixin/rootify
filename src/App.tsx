@@ -65,6 +65,42 @@ function segmentText(text: string): SegmentationResult[] {
   return results;
 }
 
+function isTranslationComplete(english: string): boolean {
+  return english.trim() !== "" && !english.includes("_");
+}
+
+function getMixedTranslation(chinese: string): JSX.Element {
+  if (!chinese.trim()) {
+    return <span className="text-gray-400">...</span>;
+  }
+  
+  const segments = segmentText(chinese);
+  
+  return (
+    <>
+      {segments.map((segment, index) => {
+        const isMatched = !segment.isUnknown && segment.english.trim() !== "";
+        
+        if (isMatched) {
+          // 已匹配的显示英文翻译
+          return (
+            <span key={index} className="text-green-600">
+              {segment.english}
+            </span>
+          );
+        } else {
+          // 未匹配的显示中文并标记红色
+          return (
+            <span key={index} className="text-red-600">
+              {segment.chinese}
+            </span>
+          );
+        }
+      })}
+    </>
+  );
+}
+
 
 function RootManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -454,12 +490,9 @@ function App() {
   const handleBatchTranslate = () => {
     const translatedData = tableData.map((row) => {
       if (row.chinese.trim()) {
-        const segments = segmentText(row.chinese);
-        const englishResult = segments.map((seg) => seg.english).join("_");
-        
         return { 
           ...row, 
-          english: englishResult
+          english: row.chinese // 保存原文，用于显示混合翻译
         };
       }
       return row;
@@ -486,15 +519,12 @@ function App() {
       const updatedCustomRoots = { ...customRoots, [chinese.trim()]: english.trim() };
       saveCustomRoots(updatedCustomRoots);
       
-      // 重新翻译所有文本
+      // 重新翻译所有文本（保持原文，但显示会更新）
       const retranslatedData = tableData.map((row) => {
         if (row.chinese.trim()) {
-          const segments = segmentText(row.chinese);
-          const englishResult = segments.map((seg) => seg.english).join("_");
-          
           return { 
             ...row, 
-            english: englishResult
+            english: row.chinese // 保持原文，混合翻译显示会自动更新
           };
         }
         return row;
@@ -625,17 +655,17 @@ function App() {
 
               {tableData.length > 0 && (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
-                    <div className="flex">
-                      <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">中文字段名</div>
-                      <div className="px-4 py-3 font-medium text-gray-900">英文字段名</div>
+                  <div className="grid grid-cols-2 items-center px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <div className="px-4 py-3 font-medium text-gray-900 border-r border-gray-200">中文字段名</div>
+                    <div className="px-4 py-3 font-medium text-gray-900 flex justify-between items-center">
+                      <span>英文字段名</span>
+                      <button
+                        onClick={handleExportTSV}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                      >
+                        导出到剪贴板
+                      </button>
                     </div>
-                    <button
-                      onClick={handleExportTSV}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
-                    >
-                      导出到剪贴板
-                    </button>
                   </div>
 
                   {tableData.map((row, index) => (
@@ -650,7 +680,9 @@ function App() {
                         />
                         </div>
                       <div className="relative flex items-center">
-                        <div className="px-4 py-3 pr-20 font-mono flex-1 text-blue-600">{row.english || "..."}</div>
+                        <div className="px-4 py-3 pr-20 font-mono flex-1">
+                          {getMixedTranslation(row.english)}
+                        </div>
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {row.english && (
                             <button
